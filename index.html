@@ -1,0 +1,672 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Best Practices in Legacy Code</title>
+
+		<link rel="stylesheet" href="reveal/css/reveal.css">
+		<link rel="stylesheet" href="reveal/css/theme/serif.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="reveal/lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+
+<section>
+<h2>Introducing Best Practices in Legacy Code</h2>
+<h4>Moshe Zadka</h4>
+ https://orbifold.xyz
+<h4>Kurt B. Rose</h4>
+https://github.com/kurtbrose
+</section>
+
+<section><h2>Outline</h2>
+
+<ul>
+<li class="fragment">Defining our terms</li>
+<li class="fragment">Goals</li>
+<li class="fragment">Typical problems</li>
+<li class="fragment">Technical solutions</li>
+<li class="fragment">Social solutions</li>
+</ul>
+
+</section>
+
+<section><h2>What is legacy code?</h2>
+
+<ul>
+<li class="fragment">Important</li>
+<li class="fragment">Hard to replace</li>
+<li class="fragment">Often bad</li>
+<li class="fragment">Often old</li>
+</ul>
+
+</section>
+
+<section><h2>Why bad?</h2>
+
+<ul>
+<li class="fragment">Written by smart people</li>
+<li class="fragment">Inexperienced in tech stack</li>
+<li class="fragment">Rushed</li>
+<li class="fragment">Different assumptions</li>
+</ul>
+
+</section>
+
+<section><h2>Why best practices?</h2>
+
+<ul>
+<li class="fragment">Iterate faster</h2>
+<li class="fragment">Fix bugs</h2>
+<li class="fragment">Less regressions</h2>
+</ul>
+
+</section>
+
+<section><h2>What are best practices?</h2>
+
+<ul>
+<li class="fragment">Common knowledge</li>
+<li class="fragment">Probably not the worst ever</li>
+<li class="fragment">Require thought</li>
+</ul>
+
+</section>
+
+<section><h2>What are the anti-goals?</h2>
+<ul>
+<li class="fragment">Halt development</li>
+<li class="fragment">Confuse and annoy engineers</li>
+<li class="fragment">Introduce regressions</li>
+</ul>
+
+</section>
+
+<section><h2>What are the non-goals?</h2>
+<ul>
+<li class="fragment">Cool blog or talk</li>
+<li class="fragment">Updating to all-new buzzwords</li>
+</ul>
+
+</section>
+
+<section><h2>What are the goals?</h2>
+<h3>Take advantage of better practices</h3>
+
+<div class="fragment">From 
+
+<pre><code>fp = open('some-file')
+try:
+    s = fp.read()
+finally:
+    fp.close()
+</code></pre>
+</div>
+
+<div class="fragment">To
+
+<pre><code>with open('some-file') as fp:
+    s = fp.read()
+</code></pre>
+</div>
+
+</section>
+
+<section><h2>What are the goals?</h2>
+<h3>Introduce developer-efficiency tools</h3>
+
+<ul>
+<li class="fragment">tox</li>
+<li class="fragment">unit testing + coverage</li>
+<li class="fragment">static checking</li>
+</ul>
+</section>
+
+<section><h2>What are the goals?</h2>
+<h3>Current/supported dependencies</h3>
+
+<p><span class="fragment">2.6->2.7</span><span class="fragment">->3.6</span><span class="fragment">->3.7...</span>
+
+<p class="fragment">Libraries</p>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>(Too) big</h3>
+
+<ul>
+<li class="fragment">10000 line modules</li>
+<li class="fragment">5000 line functions</li>
+<li class="fragment">30 argument functions</li>
+<li class="fragment">10 levels of nesting</li>
+</ul>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Old libraries</h3>
+
+<p class="fragment">Twisted 9.0.0</p>
+<p class="fragment">Sometimes dead (python-instagram)</p>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Deprecated idioms</h3>
+
+<pre><code>set([1,2,3])
+</code></pre>
+
+<div class="fragment">Better
+<pre><code>{1, 2, 3}
+</code></pre>
+</div>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Anti-idioms</h3>
+
+<pre><code>try:
+    output = run_command('foo')
+except:
+    output = 'default output'
+</code></pre>
+
+<p class="fragment">Catch specific exception</p>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Anti-idioms</h3>
+
+<pre><code>class Foo(object):
+    def __init__(self, a, b, c):
+        self.__dict__.update(locals())
+        del self.__dict__['self']
+</code></pre>
+
+<pre class="fragment"><code>@attr.s
+class Foo(object):
+    a, b, c = attr.ib(), attr.ib(), attr.ib()
+</code></pre>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Tight integration</h3>
+
+<pre><code>class Foo(object):
+    def __init__(self):
+        self.bar = Bar()
+</code></pre>
+
+<div class="fragment">Better
+<pre><code>@attr.s
+class Foo(object):
+    bar = attr.ib()
+    @classmethod
+    def from_Bar(cls):
+        return cls(Bar())
+</code></pre></div>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+<p>End result</p>
+<pre><code>def get_address(name):
+    if name in services:
+        if services[name].ip:
+            return service[name].ip, service[name].port
+        elif services[name].address:
+            # Added for issue #2321
+            if ':' in services[name].address:
+               return service[name].address.split(':')
+            else:
+               # Fixes issues #6985
+               # TODO: Hotfix, clean-up later
+               return service[name].address, DEFAULT_PORT
+    return dns_lookup(name), DEFAULT_PORT
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+<p>Initial version</p>
+<pre><code>def get_address(name):
+    return dns_lookup(name), DEFAULT_PORT
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+<p>DNS too slow for common services</p>
+<pre><code>def get_address(name):
+    if name in services:
+        # Fixes issues #6985
+        # TODO: Hotfix, clean-up later
+        return service[name].address, DEFAULT_PORT
+    return dns_lookup(name), DEFAULT_PORT
+</code></pre>
+</section>
+
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+<p>Multiple services on one host</p>
+<pre><code>def get_address(name):
+    if name in services:
+        # Added for issue #2321
+        if ':' in services[name].address:
+            return service[name].address.split(':')
+        else:
+            # Fixes issues #6985
+            # TODO: Hotfix, clean-up later
+            return service[name].address, DEFAULT_PORT
+    return dns_lookup(name), DEFAULT_PORT
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+<p>IPv6</p>
+<pre><code>def get_address(name):
+    if name in services:
+        if services[name].ip:
+            return service[name].ip, service[name].port
+        elif services[name].address:
+            # Added for issue #2321
+            if ':' in services[name].address:
+               return service[name].address.split(':')
+            else:
+               # Fixes issues #6985
+               # TODO: Hotfix, clean-up later
+               return service[name].address, DEFAULT_PORT
+    return dns_lookup(name), DEFAULT_PORT
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+
+<img src="standards.png" />
+
+</section>
+
+
+<section><h2>Typical problems</h2>
+<h3>Floating abstraction</h3>
+
+<ul>
+<li class="fragment">There should only be one</li>
+<li class="fragment">Easier to add special cases</li>
+<li class="fragment"><em>Properly</em> solving requires understanding</li>
+</ul>
+
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Missing abstractions</h3>
+<p>End result</p>
+<pre><code>def get_age(user):
+    return int(cache_lookup(user, 'age'))
+def get_address(user):
+    return parse_address(cache_lookup(user, 'address'))
+def get_phone_number(user):
+    return parse_number(cache_lookup(user, 'phone'))
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Missing abstractions</h3>
+<p>Initial version</p>
+<pre><code>def get_age(user):
+    return int(cache_lookup(user, 'age'))
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Missing abstractions</h3>
+<p>Address object</p>
+<pre><code>def get_age(user):
+    return int(cache_lookup(user, 'age'))
+def get_address(user):
+    return parse_address(cache_lookup(user, 'address'))
+</code></pre>
+</section>
+
+<section><h2>Typical problems</h2>
+<h3>Missing abstractions</h3>
+<p>Normalize phone numbers</p>
+<pre><code>def get_age(user):
+    return int(cache_lookup(user, 'age'))
+def get_address(user):
+    return parse_address(cache_lookup(user, 'address'))
+def get_phone_number(user):
+    return parse_number(cache_lookup(user, 'phone'))
+</code></pre>
+
+<p class="fragment">Missing data-driven approach</p>
+</section>
+
+
+<section><h2>Typical problems</h2>
+<h3>Intent/usage mismatch</h2>
+
+<ul>
+<li class="fragment">Code had original intent</li>
+<li class="fragment">Maintainers violated intent</li>
+<li class="fragment">Debt <em>naturally</em> accrues</li>
+<li class="fragment">These examples were easy-mode</li>
+</ul>
+
+</section>
+
+<section><h2>The way forward</h2>
+
+<ul>
+<li class="fragment">Beware minimum viable products</li>
+<li class="fragment">Notice the skulls</li>
+<li class="fragment">Find partial solutions to finish</li>
+</ul>
+
+</section>
+
+<section><h2>Improving tests</h2>
+
+<p class="fragment">Tests are important</p>
+
+</section>
+
+<section><h2>Good tests?</h2>
+
+<p class="fragment">Use them!</p>
+
+</section>
+
+<section><h2>No tests?</h2>
+
+<ul>
+<li class="fragment">future development</li>
+<li class="fragment">pytest</li>
+<li class="fragment">tox</li>
+<li class="fragment">environment drift</li>
+</ul>
+
+</section>
+
+
+<section><h2>Bad tests?</h2>
+<h3>Change prone</h3>
+
+<pre><code>
+class TestSomething(unittest.TestCase):
+    @mock.patch(sort)
+    @mock.patch(sys.stdout)
+    def test_func(self, my_stdout, my_sort):
+        my_sort.return_value = [1, 2, 3]
+        func("hello")
+        my_stdout.write.assert_called_with("123")
+</code></pre>
+
+</section>
+
+
+<section><h2>Bad tests?</h2>
+<h3>Flakey</h3>
+
+<pre><code>
+class TestSomething(unittest.TestCase):
+    def test_foo(self):
+        x = foo()
+        # Fixes #2139 -- test fails
+        time.sleep(3.5)
+        self.assertEquals(x[0], 'hello')
+</code></pre>
+
+</section>
+
+<section><h2>Bad tests?</h2>
+
+<p class="fragment">Delete!</p>
+
+</section>
+
+<section><h2>Introducing Unit Test Coverage</h2>
+
+<ul>
+<li class="fragment">100% only number...</li>
+<li class="fragment">...<code>#pragma: no cover</code></li>
+</ul>
+
+</section>
+
+<section><h2>Introducing Linting</h2>
+<h3 class="fragment">Judiciously configure rules</h3>
+
+<ul>
+<li class="fragment">Do you really need a 3-arg-max on functions?</li>
+<li class="fragment">Lint failures must prevent merge</li>
+</ul>
+
+</section>
+
+<section><h2>Introducing Linting</h2>
+<h3>Grandfather existing violations</h3>
+
+<ul>
+<li class="fragment">Avoid version control noise</li>
+<li class="fragment">Touching a lot of files is dangerous</li>
+<li class="fragment"><code>git blame</code></li>
+<li class="fragment"><code>git log</code></li>
+<li class="fragment">Spurious builds</li>
+<li class="fragment">Regressions</li>
+</ul>
+</section>
+
+<section><h2>Introducing Linting</h2>
+<h3>Ratchet</h3>
+
+<ul>
+<li class="fragment">Explicit <em>addition</em> of lint violations</li>
+<li class="fragment">Easy removal of grandfathered violations</li>
+</ul>
+
+</section>
+
+<section><h2>Upgrading</h2>
+<h3>Python</h3>
+
+<ul>
+<li class="fragment">CPython/PyPy 2.7</li>
+<li class="fragment">CPython 3.6</li>
+<li class="fragment">PyPy 3.5</li>
+<li class="fragment">Library compatibility</li>
+</ul>
+
+</section>
+
+<section><h2>Upgrading</h2>
+<h3>Libraries</h3>
+<h4>When</h4>
+
+<ul>
+<li class="fragment">Not before you can</li>
+<li class="fragment">Not after you have to</li>
+<li class="fragment">Reasonably soon after stable release</li>
+<li class="fragment">But avoid churn</li>
+<li class="fragment">One at a time (but dependencies)</li>
+</ul>
+
+</section>
+
+
+<section><h2>Upgrading</h2>
+<h3>Libraries</h3>
+<h4>How</h4>
+
+<ul>
+<li class="fragment">Binary wheels</li>
+<li class="fragment">Good tests</li>
+<li class="fragment">Version numbers meaningless</li>
+</ul>
+
+</section>
+
+<section><h2>Upgrading</h2>
+<h3>Libraries</h3>
+<h4>End of Life</h4>
+
+<ul>
+<li class="fragment">Forked (PyCrypto -> PyCryptodome)</li>
+<li class="fragment">Dead libraries</li>
+</ul>
+
+</section>
+
+<section><h2>Upgrading</h2>
+<h3>Service Oriented Python</h3>
+
+<ul>
+<li class="fragment">Process: one version of Python</li>
+<li class="fragment">Process: one version of library</li>
+<li class="fragment">Careful upgrades easier with multiple processes</li>
+<li class="fragment">SOA/Microservices</li>
+</ul>
+
+</section>
+
+
+<section><h2>Getting Engineer Support</h2>
+<h3>Demonstrate advantages</h3>
+
+<pre class="fragment"><code>
+class Tree(object):
+# ...
+    def visit(self, cb):
+        cb(self.value)
+        for child in self.children:
+            child.visit(cb)
+    # Vs.
+    def __iter__(self):
+        yield self.value
+        for child in self.children:
+            for value in child:
+                yield value
+</code></pre>
+
+</section>
+
+<section><h2>Getting Engineer Support</h2>
+<h3>Demonstrate advantages</h3>
+
+<pre class="fragment"><code>def cb(accum, obj):
+    accum = accum[0] + obj
+accum = [0]
+tree.visit(cb)
+result = accum[0]
+</code></pre>
+
+<pre class="fragment"><code>result = sum(tree)   
+</code></pre>
+
+</section>
+
+<section><h2>Getting Engineer Support</h2>
+<h3>Education</h3>
+
+<ul>
+<li class="fragment">PyVideo tech lunches</li>
+<li class="fragment">Dedicated lightning talks</li>
+<li class="fragment">Internal blog</li>
+</ul>
+
+</section>
+
+<section><h2>Getting Engineer Support</h2>
+<h3>Support</h3>
+<ul>
+<li class="fragment">Code reviews</li>
+<li class="fragment">Debugging help</li>
+</ul>
+</section>
+
+<section><h2>Getting Engineer Support</h2>
+<h3>Automation</h3>
+
+<ul>
+<li><span class="fragment">"No worse than GitHub"</span> <span class="fragment">(GitLab is free)</span></li>
+<li class="fragment">Continuous integration</li>
+<li class="fragment">Efficient local testing</li>
+</ul>
+
+</section>
+
+<section><h2>Getting Management Support</h2>
+
+<ul>
+<li class="fragment">Demonstrate Return on Investment</li>
+<li class="fragment">Gradual changes and gradual results</li>
+<li class="fragment">Be risk averse</li>
+<li class="fragment">Measure carefully</li>
+</ul>
+
+</section>
+
+<section><h2>Rewriting is not a Panacea</h2>
+
+<ul>
+<li class="fragment">Not fast</li>
+<li class="fragment">Maintain two parallel systems</li>
+<li class="fragment">Possibly forever</li>
+</ul>
+
+</section>
+
+<section><h2>Conclusion</h2>
+
+<ul>
+<li class="fragment">Legacy will legate</li>
+<li class="fragment">Can be made better</li>
+<li class="fragment">Worth the effort</li>
+<li class="fragment">Rewriting is risky</li>
+</ul>
+
+</section>
+
+			</div>
+		</div>
+
+		<script src="reveal/lib/js/head.min.js"></script>
+		<script src="reveal/js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				dependencies: [
+					{ src: 'reveal/plugin/markdown/marked.js' },
+					{ src: 'reveal/plugin/markdown/markdown.js' },
+					{ src: 'reveal/plugin/notes/notes.js', async: true },
+					{ src: 'reveal/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
